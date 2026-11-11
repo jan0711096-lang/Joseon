@@ -241,6 +241,11 @@ function makeLocalStore(){
       if (a.some(x => x.id === r.id)) throw {code:"exists"};
       a.push({...r, t: Date.now()}); write(a); cb(a);
     },
+    async update(id, patch){
+      const a = read(); const i = a.findIndex(x => x.id === id);
+      if (i < 0) throw {code:"not-found"};
+      a[i] = {...a[i], ...patch, edited:true}; write(a); cb(a);
+    },
     async remove(id){ const a = read().filter(x => x.id !== id); write(a); cb(a); },
     async clearAll(){ write([]); cb([]); }
   };
@@ -261,13 +266,16 @@ async function makeFirebaseStore(){
         fn(snap.docs.map(d => {
           const x = d.data();
           const t = x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : Date.now();
-          return {...x, id:d.id, t};
+          return {...x, id:d.id, t, edited: !!x.editedAt};
         }));
       }, onErr);
     },
     async add(r){
       const {id, ...data} = r;
       await fs.setDoc(fs.doc(db, "reviews", id), {...data, createdAt: fs.serverTimestamp()});
+    },
+    async update(id, patch){
+      await fs.updateDoc(fs.doc(db, "reviews", id), {...patch, editedAt: fs.serverTimestamp()});
     },
     async remove(id){ await fs.deleteDoc(fs.doc(db, "reviews", id)); },
     async clearAll(){
@@ -277,11 +285,16 @@ async function makeFirebaseStore(){
   };
 }
 
-/* ================= DEVICE LOCK (1 review per painting per device) ================= */
-const LOCK = "museum_done_v1";
+/* ================= MY REVIEWS (1 per painting per device; unlocks if the review is deleted) ================= */
+const LOCK = "museum_mine_v2";   // painting id -> id of the review written on this device
 const readLock = () => { try { return JSON.parse(localStorage.getItem(LOCK)||"{}"); } catch(e){ return {}; } };
-const markDone = pid => { const o = readLock(); o[pid] = true; try { localStorage.setItem(LOCK, JSON.stringify(o)); } catch(e){} };
-const isDone = pid => !!readLock()[pid];
+const setMine = (pid, id) => { const o = readLock(); o[pid] = id; try { localStorage.setItem(LOCK, JSON.stringify(o)); } catch(e){} };
+const getMineId = pid => readLock()[pid] || null;
+let loaded = false;   // true after the first data arrives
+const myReview = pid => { const id = getMineId(pid); return id ? (reviews.find(r => r.id === id) || null) : null; };
+const isDone = pid => { const id = getMineId(pid); if (!id) return false; return loaded ? reviews.some(r => r.id === id) : true; };
+const editing = {};   // painting id -> true while editing my review
+let modalMineId = null;
 
 /* ================= RENDER GALLERY ================= */
 let showTop = false;
@@ -368,8 +381,17 @@ function renderModal(){
   const body = el("div",{class:"mbody"});
   m.append(body);
 
-  if (isDone(p.id)){
-    body.append(el("div",{class:"done",text:"✓ You already reviewed this painting. Try another one!"}));
+  const mine = myReview(p.id);
+  modalMineId = mine ? mine.id : null;
+  if (!mine) editing[p.id] = false;
+  if (editing[p.id] && mine){
+    body.append(buildForm(p, mine));
+  } else if (isDone(p.id)){
+    const box = el("div",{class:"done"}, "✓ You reviewed this painting.  ");
+    if (mine) box.append(el("button",{class:"btn",type:"button",id:"editBtn",
+      style:"margin-left:8px;min-height:36px;padding:6px 12px",
+      onclick:() => { editing[p.id] = true; delete draft[p.id]; renderModal(); }, text:"Edit my review"}));
+    body.append(box);
   } else {
     body.append(buildForm(p));
   }
@@ -392,18 +414,23 @@ function refreshList(){
   list.forEach(r => {
     wrap.append(el("div",{class:"rev"},
       el("div",{class:"top2"},
-        el("div",{}, el("span",{class:"nm",text:r.nickname}), "  ", el("span",{class:"st",text:starStr(r.stars)})),
+        el("div",{}, el("span",{class:"nm",text:r.nickname}), "  ", el("span",{class:"st",text:starStr(r.stars)}),
+          r.edited ? el("span",{class:"hint",text:"  (edited)"}) : null),
         el("button",{class:"del",type:"button",onclick:()=>deleteReview(r),text:"Delete"})),
       el("p",{text:r.text})));
   });
 }
 
-function buildForm(p){
-  const d = draft[p.id] || (draft[p.id] = {stars:0, title:p.title, painter:p.painter});
+function buildForm(p, mine){
+  const d = draft[p.id] || (draft[p.id] = mine
+    ? {stars:mine.stars, nick:mine.nickname, title:mine.parts.title, painter:mine.parts.painter, ing:mine.parts.ing,
+       ed:mine.parts.ed, part:mine.parts.part, rem:mine.parts.rem,
+       reasonIdx:String(STAR_SENTENCES.indexOf(mine.parts.reason)), extra:mine.parts.extra || ""}
+    : {stars:0, title:p.title, painter:p.painter});
   const f = el("div",{});
-  f.append(el("h3",{text:"Write your review"}));
+  f.append(el("h3",{text: mine ? "Edit your review" : "Write your review"}));
 
-  const nick = el("input",{type:"text", maxlength:NICK_MAX, placeholder:"Nickname (max 12)", value:d.nick||"", autocomplete:"off"});
+  const nick = el("input",{type:"text", maxlength:NICK_MAX, placeholder:"Nickname (max 12)", value:d.nick||"", autocomplete:"off", disabled: !!mine});
   nick.addEventListener("input", () => d.nick = nick.value);
   f.append(el("div",{class:"nick"}, el("b",{text:"Nickname"}), nick));
 
@@ -472,21 +499,34 @@ function buildForm(p){
       title:stripDot(d.title), painter:stripDot(d.painter), ing:stripDot(d.ing), ed:stripDot(d.ed),
       part:stripDot(d.part), rem:stripDot(d.rem), reason:STAR_SENTENCES[Number(d.reasonIdx)], extra:(d.extra||"").trim()
     };
-    const id = `${p.id}~${nickKey(nm)}`;
-    if (byPainting()[p.id].some(r => r.id === id)){ err.textContent = "That nickname already wrote a review for this painting."; return; }
+    const id = mine ? mine.id : `${p.id}~${nickKey(nm)}`;
+    if (!mine && byPainting()[p.id].some(r => r.id === id)){ err.textContent = "That nickname already wrote a review for this painting."; return; }
+    const label = mine ? "Save changes" : "Submit review";
     submit.disabled = true; submit.textContent = "Sending…";
     try{
-      await store.add({id, paintingId:p.id, nickname:nm, stars:d.stars, parts, text:composeText(parts)});
-      markDone(p.id); delete draft[p.id];
+      if (mine){
+        await store.update(id, {stars:d.stars, parts, text:composeText(parts)});
+        editing[p.id] = false;
+      } else {
+        await store.add({id, paintingId:p.id, nickname:nm, stars:d.stars, parts, text:composeText(parts)});
+        setMine(p.id, id);
+      }
+      delete draft[p.id];
       renderModal();
     }catch(e){
-      submit.disabled = false; submit.textContent = "Submit review";
-      err.textContent = (e && (e.code === "exists" || e.code === "permission-denied"))
-        ? "That nickname already wrote a review for this painting (or the review could not be saved)."
-        : "Could not send. Check the Wi-Fi and try again.";
+      submit.disabled = false; submit.textContent = label;
+      err.textContent = mine
+        ? "Could not save your changes. Check the Wi-Fi and try again."
+        : (e && (e.code === "exists" || e.code === "permission-denied"))
+          ? "That nickname already wrote a review for this painting (or the review could not be saved)."
+          : "Could not send. Check the Wi-Fi and try again.";
     }
   });
-  f.append(err, submit);
+  submit.textContent = mine ? "Save changes" : "Submit review";
+  const btnRow = el("div",{style:"display:flex;gap:10px;flex-wrap:wrap;align-items:center"}, submit);
+  if (mine) btnRow.append(el("button",{class:"btn",type:"button",id:"cancelEdit",text:"Cancel",
+    onclick:() => { editing[p.id] = false; delete draft[p.id]; renderModal(); }}));
+  f.append(err, btnRow);
   return f;
 }
 
@@ -514,7 +554,14 @@ $("#adminBtn").addEventListener("click", async () => {
 });
 
 /* ================= START ================= */
-function onData(list){ reviews = list; renderGallery(); if (currentId) refreshList(); }
+function onData(list){
+  reviews = list; loaded = true; renderGallery();
+  if (currentId){
+    // re-draw the whole modal only if my own review appeared/disappeared (e.g., the teacher deleted it)
+    const m = myReview(currentId);
+    if ((m ? m.id : null) !== modalMineId) renderModal(); else refreshList();
+  }
+}
 
 async function start(){
   renderGallery();
