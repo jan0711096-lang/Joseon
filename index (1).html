@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Joseon Art Museum</title>
+<style>
+:root{
+  --wall:#e8dfd0; --wall2:#d9cdb8; --ink:#2b2622; --muted:#6f655b;
+  --gold:#d9a521; --gold-empty:#c9c0b3; --frame:#5a3d22; --frame2:#8a6338;
+  --dark:#2a2420; --accent:#8c2f39; --ok:#2f6f4f;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:-apple-system,"Segoe UI","Malgun Gothic",Arial,sans-serif;
+  color:var(--ink);
+  background:
+    linear-gradient(to bottom, rgba(0,0,0,.10) 0, rgba(0,0,0,0) 90px),
+    linear-gradient(to bottom, var(--wall) 0, var(--wall2) 100%);
+  min-height:100vh; padding-bottom:70px; position:relative;
+}
+body::after{ /* floor */
+  content:""; position:fixed; left:0; right:0; bottom:0; height:46px;
+  background:linear-gradient(#3b2d22,#241a13); border-top:6px solid #5b4636; z-index:0; pointer-events:none;
+}
+header{
+  background:var(--dark); color:#f3ead9; padding:16px 20px; display:flex; flex-wrap:wrap; gap:10px 20px;
+  align-items:center; justify-content:space-between; position:relative; z-index:1;
+}
+header h1{margin:0; font:700 26px/1.1 Georgia,"Times New Roman",serif; letter-spacing:.5px}
+header .sub{font-size:14px; color:#cdbf9f; margin-top:4px}
+.hbtns{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.pill{font-size:14px; background:#3d342d; border:1px solid #5a4d42; border-radius:999px; padding:7px 14px; color:#f3ead9}
+button{font:inherit; cursor:pointer}
+.btn{background:var(--gold); color:#2b2622; border:0; border-radius:10px; padding:10px 16px; font-weight:700; min-height:44px}
+.btn.ghost{background:transparent; color:#f3ead9; border:1px solid #7a6c5e}
+.btn.ghost.on{background:#f3ead9; color:#2b2622}
+.btn.main{background:var(--accent); color:#fff}
+.btn[disabled]{opacity:.5; cursor:not-allowed}
+#banner{display:none; padding:10px 20px; font-size:14px; text-align:center; position:relative; z-index:1}
+#banner.local{display:block; background:#fff3cd; color:#6a5200; border-bottom:1px solid #e6d48a}
+#banner.err{display:block; background:#fde3e3; color:#8a1f1f; border-bottom:1px solid #e9a8a8}
+.scenario{text-align:center; padding:18px 20px 4px; font-size:17px; color:var(--muted); font-style:italic; position:relative; z-index:1}
+
+main{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:34px 22px;
+  max-width:1500px; margin:0 auto; padding:26px 22px 20px; position:relative; z-index:1;
+}
+@media (min-width:1100px){ main{grid-template-columns:repeat(5,1fr)} }
+.work{display:flex; flex-direction:column; align-items:center; min-width:0}
+.light{ /* picture light */
+  width:60%; height:7px; background:#1d1814; border-radius:4px; margin-bottom:-2px; position:relative;
+  box-shadow:0 0 14px 5px rgba(255,236,170,.35);
+}
+.frame{
+  width:100%; border:0; padding:12px; cursor:pointer; text-align:left;
+  background:linear-gradient(135deg,var(--frame2),var(--frame));
+  border-radius:3px; box-shadow:0 10px 22px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.12);
+  transition:transform .15s;
+}
+.frame:hover,.frame:focus-visible{transform:translateY(-3px); outline:3px solid var(--gold)}
+.mat{background:#f7f1e4; padding:10px; box-shadow:inset 0 0 8px rgba(0,0,0,.25)}
+.canvas{position:relative; width:100%; aspect-ratio:4/5; background:#d8cfbf; overflow:hidden; display:flex; align-items:center; justify-content:center}
+.canvas img{width:100%; height:100%; object-fit:contain; display:block; background:#1c1713}
+.ph{
+  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:10px; text-align:center;
+  background:repeating-linear-gradient(45deg,#e3dac9,#e3dac9 12px,#ddd3c0 12px,#ddd3c0 24px); color:#7b6f60; font-size:13px;
+}
+.ph b{font-size:15px; color:#5a4d3f}
+.plaque{
+  margin-top:12px; background:#fbf7ee; border:1px solid #c9bda6; border-radius:4px; padding:6px 10px; width:88%; text-align:center;
+  min-height:68px; display:flex; flex-direction:column; justify-content:center;
+  box-shadow:0 2px 5px rgba(0,0,0,.18)
+}
+.plaque .t{font:700 14px/1.25 Georgia,serif}
+.plaque .a{font-size:12.5px; color:var(--muted); font-style:italic}
+.rating{margin-top:10px; text-align:center}
+.stars{position:relative; display:inline-block; font-size:26px; line-height:1; letter-spacing:2px; white-space:nowrap}
+.stars .bg{color:var(--gold-empty)}
+.stars .fg{position:absolute; left:0; top:0; overflow:hidden; color:var(--gold); white-space:nowrap}
+.avg{font-size:14px; color:var(--muted); margin-top:3px; min-height:20px}
+.avg b{color:var(--ink); font-size:16px}
+.top{display:none; margin-top:4px; background:var(--gold); color:#2b2622; font-weight:700; font-size:13px; border-radius:999px; padding:3px 10px}
+body.showtop .work.isTop .top{display:inline-block}
+body.showtop .work.isTop .frame{box-shadow:0 0 0 4px var(--gold), 0 10px 22px rgba(0,0,0,.35)}
+.preview{
+  margin-top:10px; width:100%; background:rgba(255,255,255,.65); border-left:4px solid var(--gold);
+  border-radius:4px; padding:8px 10px; font-size:14px; line-height:1.4; min-height:34px;
+}
+.preview .who{font-weight:700; font-size:13px; display:flex; justify-content:space-between; gap:6px}
+.preview .who span.s{color:var(--gold); letter-spacing:1px; white-space:nowrap}
+.preview .txt{
+  display:-webkit-box; -webkit-line-clamp:3; line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; margin-top:2px; word-break:break-word;
+}
+.preview.empty{color:var(--muted); font-style:italic; border-left-color:#c9c0b3}
+.more{margin-top:6px; background:none; border:0; color:var(--accent); font-weight:700; text-decoration:underline; font-size:14px; padding:6px 2px; min-height:36px}
+
+/* modal */
+#overlay{display:none; position:fixed; inset:0; background:rgba(20,15,10,.65); z-index:50; overflow:auto; padding:20px 12px}
+#overlay.open{display:block}
+.modal{background:#fffaf0; max-width:760px; margin:0 auto; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.5); overflow:hidden}
+.mhead{background:var(--dark); color:#f3ead9; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:10px}
+.mhead h2{margin:0; font:700 20px/1.2 Georgia,serif}
+.mhead .by{font-size:13px; color:#cdbf9f; font-style:italic}
+.x{background:#4a3f36; color:#fff; border:0; border-radius:8px; width:44px; height:44px; font-size:22px; flex:none}
+.mbody{padding:16px 18px 22px}
+.mbody h3{margin:0 0 8px; font-size:16px}
+.fieldrow{display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin:8px 0; font-size:17px}
+.fieldrow input,.fieldrow select,.nick input,textarea{
+  font:inherit; font-size:16px; padding:9px 10px; border:1.5px solid #b7ab97; border-radius:8px; background:#fff; min-height:44px;
+}
+.fieldrow input{flex:1 1 180px; min-width:120px}
+.fieldrow select{flex:1 1 260px}
+.hint{font-size:12.5px; color:var(--muted)}
+.nick{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px}
+.nick input{flex:1 1 200px}
+.picker{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:10px 0}
+.picker .sb{background:none; border:0; font-size:40px; line-height:1; color:var(--gold-empty); padding:2px 4px; min-width:48px; min-height:48px}
+.picker .sb.on{color:var(--gold)}
+.picker .lab{font-size:14px; color:var(--muted)}
+textarea{width:100%; resize:vertical; min-height:70px}
+.warn{display:none; background:#fff3cd; border:1px solid #e6d48a; color:#6a5200; padding:8px 10px; border-radius:8px; font-size:14px; margin:6px 0}
+.warn.show{display:block}
+.err{color:#a11d2b; font-size:14px; margin:8px 0; min-height:18px}
+.done{background:#e6f4ea; color:var(--ok); border:1px solid #b6dcc2; padding:10px 12px; border-radius:8px; font-weight:700}
+hr{border:0; border-top:1px dashed #c9bda6; margin:18px 0}
+.rev{border:1px solid #e1d7c4; background:#fff; border-radius:8px; padding:10px 12px; margin:8px 0}
+.rev .top2{display:flex; justify-content:space-between; gap:8px; align-items:center}
+.rev .nm{font-weight:700}
+.rev .st{color:var(--gold); letter-spacing:1px}
+.rev p{margin:6px 0 0; line-height:1.5; word-break:break-word; font-size:15px}
+.del{background:none; border:1px solid #cdbfae; border-radius:8px; color:#7a6c5e; padding:4px 10px; font-size:13px; min-height:36px}
+.foot{text-align:center; position:fixed; bottom:8px; left:0; right:0; z-index:2; pointer-events:none}
+.foot button{pointer-events:auto; background:none; border:0; color:#b9a98f; font-size:12px; text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Joseon Art Museum</h1>
+    <div class="sub">Touch a painting to leave your stars and review.</div>
+  </div>
+  <div class="hbtns">
+    <span class="pill" id="count">0 reviews</span>
+    <button class="btn ghost" id="topBtn" type="button">🏆 Show top rated</button>
+  </div>
+</header>
+<div id="banner"></div>
+<div class="scenario">You are a museum reviewer today. Choose a painting, give it stars, and write your review.</div>
+<main id="gallery"></main>
+<div class="foot"><button id="adminBtn" type="button">Teacher</button></div>
+
+<div id="overlay" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script type="module">
+/* ================= SETTINGS ================= */
+// 1) Paste your Firebase web-app config here (see SETUP.md). Leave as is to run in local mode.
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  appId: "YOUR_APP_ID"
+};
+const DELETE_PASSWORD = "0711";
+const NICK_MAX = 12, FIELD_MAX = 80, EXTRA_MAX = 250;
+
+// 2) Paintings. Put image files in the images/ folder with these names (jpg). Until then a placeholder frame is shown.
+const PAINTINGS = [
+  {id:"p1", title:"Portrait of a Beauty", painter:"Shin Yun-bok", img:"images/p1.jpg"},
+  {id:"p2", title:"Ssireum (Korean Wrestling)", painter:"Kim Hong-do", img:"images/p2.jpg"},
+  {id:"p3", title:"Dream Journey to the Peach Blossom Land", painter:"An Gyeon", img:"images/p3.jpg"},
+  {id:"p4", title:"Plants and Insects", painter:"Shin Saimdang", img:"images/p4.jpg"},
+  {id:"p5", title:"Clearing After Rain on Mount Inwang", painter:"Jeong Seon", img:"images/p5.jpg"}
+];
+const STAR_SENTENCES = [
+  "it wasn't for me at all.",
+  "it's not really my style.",
+  "it's okay, but not special.",
+  "it's worth seeing.",
+  "it's a must-see."
+];
+const BAD_WORDS = ["fuck","shit","bitch","asshole","dick","sex","porn","씨발","시발","병신","좆","새끼","지랄","섹스"];
+
+/* ================= HELPERS ================= */
+const $ = (s, r=document) => r.querySelector(s);
+function el(tag, props={}, ...kids){
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(props)){
+    if (k === "class") e.className = v;
+    else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, "");
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const kid of kids) if (kid != null) e.append(kid.nodeType ? kid : document.createTextNode(kid));
+  return e;
+}
+const stripDot = s => s.trim().replace(/[.\s]+$/,"");
+const nickKey = n => encodeURIComponent(n.trim().toLowerCase().replace(/\s+/g," ")).replace(/%/g,"_");
+const hasBad = s => { const t = s.toLowerCase().replace(/[^a-z0-9가-힣]/g,""); return BAD_WORDS.some(w => t.includes(w)); };
+function starsEl(avg){
+  const pct = Math.max(0, Math.min(100, (avg/5)*100));
+  const w = el("span",{class:"stars","aria-label":`${avg.toFixed(1)} out of 5 stars`});
+  w.append(el("span",{class:"bg",text:"★★★★★"}), el("span",{class:"fg",style:`width:${pct}%`,text:"★★★★★"}));
+  return w;
+}
+const starStr = n => "★".repeat(n) + "☆".repeat(5-n);
+function composeText(p){
+  let t = `This painting is ${p.title}. It was painted by ${p.painter}. It is ${p.ing}. `
+    + `When I first looked at this painting, I felt ${p.ed}. In particular, ${p.part}. `
+    + `It reminds me of ${p.rem}. For this reason, ${p.reason}`;
+  if (p.extra) t += " " + p.extra;
+  return t;
+}
+
+/* ================= STORE (Firebase or local) ================= */
+const configured = FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith("YOUR_");
+let reviews = [];
+let mode = "local";
+let store;
+
+function setBanner(kind, msg){
+  const b = $("#banner");
+  b.className = kind || ""; b.textContent = msg || "";
+  if (!kind) b.style.display = "none"; else b.style.display = "";
+}
+
+function makeLocalStore(){
+  const KEY = "museum_reviews_v1";
+  const read = () => { try { return JSON.parse(localStorage.getItem(KEY)||"[]"); } catch(e){ return []; } };
+  const write = a => { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch(e){} };
+  let cb = ()=>{};
+  window.addEventListener("storage", e => { if (e.key === KEY) cb(read()); });
+  return {
+    subscribe(fn){ cb = fn; fn(read()); },
+    async add(r){
+      const a = read();
+      if (a.some(x => x.id === r.id)) throw {code:"exists"};
+      a.push({...r, t: Date.now()}); write(a); cb(a);
+    },
+    async remove(id){ const a = read().filter(x => x.id !== id); write(a); cb(a); },
+    async clearAll(){ write([]); cb([]); }
+  };
+}
+
+async function makeFirebaseStore(){
+  const V = "10.12.2";
+  const app = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`);
+  const fs  = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`);
+  const a = app.initializeApp(FIREBASE_CONFIG);
+  const db = fs.getFirestore(a);
+  const col = fs.collection(db, "reviews");
+  let cb = ()=>{};
+  return {
+    subscribe(fn, onErr){
+      cb = fn;
+      fs.onSnapshot(col, snap => {
+        fn(snap.docs.map(d => {
+          const x = d.data();
+          const t = x.createdAt && x.createdAt.toMillis ? x.createdAt.toMillis() : Date.now();
+          return {...x, id:d.id, t};
+        }));
+      }, onErr);
+    },
+    async add(r){
+      const {id, ...data} = r;
+      await fs.setDoc(fs.doc(db, "reviews", id), {...data, createdAt: fs.serverTimestamp()});
+    },
+    async remove(id){ await fs.deleteDoc(fs.doc(db, "reviews", id)); },
+    async clearAll(){
+      const snap = await fs.getDocs(col);
+      await Promise.all(snap.docs.map(d => fs.deleteDoc(d.ref)));
+    }
+  };
+}
+
+/* ================= DEVICE LOCK (1 review per painting per device) ================= */
+const LOCK = "museum_done_v1";
+const readLock = () => { try { return JSON.parse(localStorage.getItem(LOCK)||"{}"); } catch(e){ return {}; } };
+const markDone = pid => { const o = readLock(); o[pid] = true; try { localStorage.setItem(LOCK, JSON.stringify(o)); } catch(e){} };
+const isDone = pid => !!readLock()[pid];
+
+/* ================= RENDER GALLERY ================= */
+let showTop = false;
+function byPainting(){
+  const m = {};
+  PAINTINGS.forEach(p => m[p.id] = []);
+  reviews.forEach(r => { if (m[r.paintingId]) m[r.paintingId].push(r); });
+  Object.values(m).forEach(a => a.sort((x,y) => y.t - x.t));
+  return m;
+}
+function stats(list){
+  if (!list.length) return {avg:0, n:0};
+  return {avg: list.reduce((s,r)=>s+r.stars,0)/list.length, n:list.length};
+}
+
+function renderGallery(){
+  const g = $("#gallery");
+  const m = byPainting();
+  const all = PAINTINGS.map(p => ({p, ...stats(m[p.id])}));
+  const best = Math.max(0, ...all.filter(x=>x.n>0).map(x=>x.avg));
+  g.replaceChildren();
+  for (const {p, avg, n} of all){
+    const list = m[p.id];
+    const canvas = el("div",{class:"canvas"});
+    const ph = el("div",{class:"ph"}, el("b",{text:"Image goes here"}), el("span",{text:p.img}));
+    const img = el("img",{src:p.img, alt:`${p.title} by ${p.painter}`, loading:"lazy"});
+    img.addEventListener("error", () => img.remove());
+    img.addEventListener("load", () => ph.remove());
+    canvas.append(ph, img);
+
+    const frame = el("button",{class:"frame", type:"button", "aria-label":`Open ${p.title}`, onclick:()=>openModal(p.id)},
+      el("div",{class:"mat"}, canvas));
+
+    const rating = el("div",{class:"rating"},
+      starsEl(avg),
+      el("div",{class:"avg"}, ...(n ? [el("b",{text:avg.toFixed(1)}), ` / 5  ·  ${n} review${n>1?"s":""}`] : ["No reviews yet"])),
+      el("span",{class:"top",text:"🏆 Top rated"}));
+
+    let preview;
+    if (n){
+      const r = list[0];
+      preview = el("div",{class:"preview"},
+        el("div",{class:"who"}, el("span",{text:r.nickname}), el("span",{class:"s",text:starStr(r.stars)})),
+        el("div",{class:"txt",text:r.text}));
+    } else {
+      preview = el("div",{class:"preview empty",text:"Be the first reviewer!"});
+    }
+    const more = el("button",{class:"more",type:"button",onclick:()=>openModal(p.id)}, n ? `Read all reviews (${n})` : "Write a review");
+
+    const work = el("div",{class:"work" + (n && avg === best ? " isTop" : "")},
+      el("div",{class:"light"}), frame,
+      el("div",{class:"plaque"}, el("div",{class:"t",text:p.title}), el("div",{class:"a",text:p.painter})),
+      rating, preview, more);
+    g.append(work);
+  }
+  $("#count").textContent = `${reviews.length} review${reviews.length===1?"":"s"}`;
+}
+
+/* ================= MODAL ================= */
+let currentId = null;
+function closeModal(){ $("#overlay").classList.remove("open"); currentId = null; document.body.style.overflow = ""; }
+function openModal(pid){
+  currentId = pid;
+  renderModal();
+  $("#overlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+  $("#overlay").scrollTop = 0;
+}
+$("#overlay").addEventListener("click", e => { if (e.target.id === "overlay") closeModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && currentId) closeModal(); });
+
+// keep the form state when snapshots refresh the list
+let draft = {};
+function renderModal(){
+  if (!currentId) return;
+  const p = PAINTINGS.find(x => x.id === currentId);
+  const m = $("#modal");
+  const list = byPainting()[p.id];
+  const st = stats(list);
+  m.replaceChildren();
+  m.append(el("div",{class:"mhead"},
+    el("div",{}, el("h2",{id:"mtitle",text:p.title}), el("div",{class:"by",text:`${p.painter}  ·  ${st.n ? st.avg.toFixed(1)+" / 5 ("+st.n+")" : "no reviews yet"}`})),
+    el("button",{class:"x",type:"button","aria-label":"Close",onclick:closeModal,text:"✕"})));
+  const body = el("div",{class:"mbody"});
+  m.append(body);
+
+  if (isDone(p.id)){
+    body.append(el("div",{class:"done",text:"✓ You already reviewed this painting. Try another one!"}));
+  } else {
+    body.append(buildForm(p));
+  }
+  body.append(el("hr"), el("div",{id:"listWrap"}));
+  refreshList();
+}
+
+// Updates only the title info and the review list, so typing in the form is never interrupted.
+function refreshList(){
+  if (!currentId) return;
+  const p = PAINTINGS.find(x => x.id === currentId);
+  const list = byPainting()[p.id];
+  const st = stats(list);
+  const by = $("#modal .by");
+  if (by) by.textContent = `${p.painter}  ·  ${st.n ? st.avg.toFixed(1)+" / 5 ("+st.n+")" : "no reviews yet"}`;
+  const wrap = $("#listWrap");
+  if (!wrap) return;
+  wrap.replaceChildren(el("h3",{text:`All reviews (${list.length})`}));
+  if (!list.length) wrap.append(el("div",{class:"hint",text:"No reviews yet."}));
+  list.forEach(r => {
+    wrap.append(el("div",{class:"rev"},
+      el("div",{class:"top2"},
+        el("div",{}, el("span",{class:"nm",text:r.nickname}), "  ", el("span",{class:"st",text:starStr(r.stars)})),
+        el("button",{class:"del",type:"button",onclick:()=>deleteReview(r),text:"Delete"})),
+      el("p",{text:r.text})));
+  });
+}
+
+function buildForm(p){
+  const d = draft[p.id] || (draft[p.id] = {stars:0, title:p.title, painter:p.painter});
+  const f = el("div",{});
+  f.append(el("h3",{text:"Write your review"}));
+
+  const nick = el("input",{type:"text", maxlength:NICK_MAX, placeholder:"Nickname (max 12)", value:d.nick||"", autocomplete:"off"});
+  nick.addEventListener("input", () => d.nick = nick.value);
+  f.append(el("div",{class:"nick"}, el("b",{text:"Nickname"}), nick));
+
+  const rows = [
+    ["title","1. This painting is",""],
+    ["painter","2. It was painted by",""],
+    ["ing","3. It is","(-ing)  e.g., amazing, boring, relaxing"],
+    ["ed","4. When I first looked at this painting, I felt","(-ed)  e.g., amazed, bored, relaxed"],
+    ["part","5. In particular,","e.g., the bright colors / the dark background"],
+    ["rem","6. It reminds me of","e.g., my childhood / a rainy day"]
+  ];
+  rows.forEach(([k,label,hint]) => {
+    const inp = el("input",{type:"text", maxlength:FIELD_MAX, value:d[k]||"", autocomplete:"off", "aria-label":label});
+    inp.addEventListener("input", () => d[k] = inp.value);
+    f.append(el("div",{class:"fieldrow"}, el("span",{text:label}), inp), hint ? el("div",{class:"hint",text:hint}) : null);
+  });
+
+  // stars
+  const lab = el("span",{class:"lab",text:d.stars ? `${d.stars} star${d.stars>1?"s":""}` : "Choose your stars"});
+  const picker = el("div",{class:"picker"});
+  const btns = [];
+  const paint = () => { btns.forEach((b,i) => b.classList.toggle("on", i < d.stars)); lab.textContent = d.stars ? `${d.stars} star${d.stars>1?"s":""}` : "Choose your stars"; checkMatch(); };
+  for (let i=1;i<=5;i++){
+    const b = el("button",{class:"sb",type:"button","aria-label":`${i} star${i>1?"s":""}`,text:"★",onclick:()=>{d.stars=i; paint();}});
+    btns.push(b); picker.append(b);
+  }
+  picker.append(lab);
+  f.append(el("div",{class:"fieldrow"}, el("b",{text:"Your stars"})), picker);
+
+  // sentence 7
+  const sel = el("select",{"aria-label":"For this reason sentence"});
+  sel.append(el("option",{value:"",text:"Choose a sentence…"}));
+  STAR_SENTENCES.forEach((s,i) => sel.append(el("option",{value:String(i),text:`${"★".repeat(i+1)}  ${s}`})));
+  if (d.reasonIdx != null && d.reasonIdx !== "") sel.value = String(d.reasonIdx);
+  sel.addEventListener("change", () => { d.reasonIdx = sel.value; checkMatch(); });
+  f.append(el("div",{class:"fieldrow"}, el("span",{text:"7. For this reason,"}), sel));
+  const warn = el("div",{class:"warn",text:"Check again: do your stars and your sentence match?"});
+  f.append(warn);
+  function checkMatch(){
+    const ok = !d.stars || d.reasonIdx == null || d.reasonIdx === "" || Number(d.reasonIdx) === d.stars-1;
+    warn.classList.toggle("show", !ok);
+  }
+  paint();
+
+  // advanced
+  f.append(el("div",{class:"hint",text:"★ Advanced (optional): add 1–2 more sentences!"}));
+  const extra = el("textarea",{maxlength:EXTRA_MAX, placeholder:"Another visual detail? A memory or a place it reminds you of?"});
+  extra.value = d.extra || "";
+  extra.addEventListener("input", () => d.extra = extra.value);
+  f.append(extra);
+
+  const err = el("div",{class:"err"});
+  const submit = el("button",{class:"btn main",type:"button",text:"Submit review"});
+  submit.addEventListener("click", async () => {
+    err.textContent = "";
+    const nm = (d.nick||"").trim();
+    const need = ["title","painter","ing","ed","part","rem"];
+    if (!nm){ err.textContent = "Please write a nickname."; return; }
+    if (nm.length > NICK_MAX){ err.textContent = `Nickname must be ${NICK_MAX} characters or less.`; return; }
+    for (const k of need) if (!(d[k]||"").trim()){ err.textContent = "Please fill in every blank (1–6)."; return; }
+    if (!d.stars){ err.textContent = "Please choose your stars."; return; }
+    if (d.reasonIdx == null || d.reasonIdx === ""){ err.textContent = "Please choose the sentence for 7."; return; }
+    const allText = [nm, ...need.map(k=>d[k]), d.extra||""].join(" ");
+    if (hasBad(allText)){ err.textContent = "Please use kind words. Check your review again."; return; }
+    const parts = {
+      title:stripDot(d.title), painter:stripDot(d.painter), ing:stripDot(d.ing), ed:stripDot(d.ed),
+      part:stripDot(d.part), rem:stripDot(d.rem), reason:STAR_SENTENCES[Number(d.reasonIdx)], extra:(d.extra||"").trim()
+    };
+    const id = `${p.id}~${nickKey(nm)}`;
+    if (byPainting()[p.id].some(r => r.id === id)){ err.textContent = "That nickname already wrote a review for this painting."; return; }
+    submit.disabled = true; submit.textContent = "Sending…";
+    try{
+      await store.add({id, paintingId:p.id, nickname:nm, stars:d.stars, parts, text:composeText(parts)});
+      markDone(p.id); delete draft[p.id];
+      renderModal();
+    }catch(e){
+      submit.disabled = false; submit.textContent = "Submit review";
+      err.textContent = (e && (e.code === "exists" || e.code === "permission-denied"))
+        ? "That nickname already wrote a review for this painting (or the review could not be saved)."
+        : "Could not send. Check the Wi-Fi and try again.";
+    }
+  });
+  f.append(err, submit);
+  return f;
+}
+
+async function deleteReview(r){
+  const pw = prompt("Teacher password to delete this review:");
+  if (pw === null) return;
+  if (pw !== DELETE_PASSWORD){ alert("Wrong password."); return; }
+  if (!confirm(`Delete ${r.nickname}'s review? This cannot be undone.`)) return;
+  try{ await store.remove(r.id); }catch(e){ alert("Could not delete. Try again."); }
+}
+
+/* ================= HEADER BUTTONS / TEACHER ================= */
+$("#topBtn").addEventListener("click", () => {
+  showTop = !showTop;
+  document.body.classList.toggle("showtop", showTop);
+  $("#topBtn").classList.toggle("on", showTop);
+  $("#topBtn").textContent = showTop ? "🏆 Hide top rated" : "🏆 Show top rated";
+});
+$("#adminBtn").addEventListener("click", async () => {
+  const pw = prompt("Teacher password:");
+  if (pw === null) return;
+  if (pw !== DELETE_PASSWORD){ alert("Wrong password."); return; }
+  if (!confirm("Delete ALL reviews for ALL paintings? This cannot be undone.")) return;
+  try{ await store.clearAll(); alert("All reviews deleted."); }catch(e){ alert("Could not delete. Try again."); }
+});
+
+/* ================= START ================= */
+function onData(list){ reviews = list; renderGallery(); if (currentId) refreshList(); }
+
+async function start(){
+  renderGallery();
+  if (configured){
+    try{
+      store = await makeFirebaseStore();
+      mode = "firebase";
+      store.subscribe(onData, err => setBanner("err","Connection problem. Reviews may not be shared right now. Check the Wi-Fi."));
+      return;
+    }catch(e){
+      console.error(e);
+      setBanner("err","Could not connect to the shared database, so this device is in local mode (reviews are NOT shared).");
+    }
+  } else {
+    setBanner("local","Local mode: reviews are saved only on this device and averages are not shared. (Teacher: see SETUP.md.)");
+  }
+  store = makeLocalStore();
+  store.subscribe(onData);
+}
+start();
+</script>
+</body>
+</html>
