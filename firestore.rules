@@ -5,7 +5,7 @@ service cloud.firestore {
       // anyone with the link can read
       allow read: if true;
 
-      // create only (no overwrite): the document id is "<paintingId>~<nickname key>",
+      // create: the document id is "<paintingId>~<nickname key>",
       // so the same nickname cannot post twice on one painting
       allow create: if request.resource.data.keys().hasOnly(['paintingId','nickname','stars','parts','text','createdAt'])
         && request.resource.data.paintingId in ['p1','p2','p3','p4','p5']
@@ -21,7 +21,18 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && id.matches(request.resource.data.paintingId + '~.*');
 
-      allow update: if false;
+      // edit: only stars / parts / text may change. nickname, painting and creation time stay the same.
+      allow update: if request.resource.data.keys().hasOnly(['paintingId','nickname','stars','parts','text','createdAt','editedAt'])
+        && request.resource.data.paintingId == resource.data.paintingId
+        && request.resource.data.nickname == resource.data.nickname
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.stars is int
+        && request.resource.data.stars >= 1
+        && request.resource.data.stars <= 5
+        && request.resource.data.parts is map
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 1000
+        && request.resource.data.editedAt == request.time;
 
       // The teacher password (0711) is checked in the page, not here,
       // so deletes must be allowed. Fine for a one-day class; see SETUP.md.
