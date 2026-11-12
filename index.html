@@ -93,6 +93,7 @@ body.showtop .work.isTop .frame{box-shadow:0 0 0 4px var(--gold), 0 10px 22px rg
 .preview .txt{
   display:-webkit-box; -webkit-line-clamp:3; line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; margin-top:2px; word-break:break-word;
 }
+.preview .tag{font-size:12px; color:var(--accent); font-weight:700; margin-top:2px}
 .preview.empty{color:var(--muted); font-style:italic; border-left-color:#c9c0b3}
 .more{margin-top:6px; background:none; border:0; color:var(--accent); font-weight:700; text-decoration:underline; font-size:14px; padding:6px 2px; min-height:36px}
 
@@ -335,10 +336,13 @@ function renderGallery(){
 
     let preview;
     if (n){
-      const r = list[0];
+      // show the newest "one-line review" (the Advanced box) if there is one; otherwise the newest full review
+      const oneLiner = list.find(r => r.parts && r.parts.extra && r.parts.extra.trim());
+      const r = oneLiner || list[0];
       preview = el("div",{class:"preview"},
         el("div",{class:"who"}, el("span",{text:r.nickname}), el("span",{class:"s",text:starStr(r.stars)})),
-        el("div",{class:"txt",text:r.text}));
+        oneLiner ? el("div",{class:"tag",text:"💬 One-line review"}) : null,
+        el("div",{class:"txt",text: oneLiner ? r.parts.extra.trim() : r.text}));
     } else {
       preview = el("div",{class:"preview empty",text:"Be the first reviewer!"});
     }
@@ -476,7 +480,7 @@ function buildForm(p, mine){
   paint();
 
   // advanced
-  f.append(el("div",{class:"hint",text:"★ Advanced (optional): add 1–2 more sentences!"}));
+  f.append(el("div",{class:"hint",text:"★ Advanced · One-line review (optional): add 1–2 more sentences. They will show under the painting!"}));
   const extra = el("textarea",{maxlength:EXTRA_MAX, placeholder:"Another visual detail? A memory or a place it reminds you of?"});
   extra.value = d.extra || "";
   extra.addEventListener("input", () => d.extra = extra.value);
